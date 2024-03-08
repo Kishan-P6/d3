@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conference Rooms Hierarchy</title>
+    <style>
+        /* Add your custom styles here */
+    </style>
+</head>
+<body>
+
+<!-- Add an empty container for the chart -->
+<div id="chart-container"></div>
+<div class="container"></div>
+
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+<script>
+    // Load data from CSV
+    d3.csv('file:///Users/kishanpatel/Documents/your_data.csv').then(data => {
+        // Create a hierarchy
+        const root = d3.stratify()
+            .id(d => d['Room Name'])
+            .parentId(d => getParentId(d))
+            (data);
+
+        // Set up the D3 tree layout
+        const width = 800;
+        const height = 600;
+
+        const svg = d3.select('#chart-container')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        const treeLayout = d3.tree().size([width, height - 100]);
+        const treeData = treeLayout(root);
+
+        // Draw links
+        svg.selectAll('.link')
+            .data(treeData.links())
+            .enter()
+            .append('path')
+            .attr('class', 'link')
+            .attr('d', d3.linkHorizontal()
+                .x(d => d.y)
+                .y(d => d.x));
+
+        // Draw nodes
+        const nodes = svg.selectAll('.node')
+            .data(treeData.descendants())
+            .enter()
+            .append('g')
+            .attr('class', 'node')
+            .attr('transform', d => `translate(${d.y},${d.x})`)
+            .on('click', d => {
+                // Handle drill-down on click
+                if (d.children) {
+                    d.children = null;
+                } else {
+                    d.children = d.data.children;
+                }
+                update(treeLayout(root));
+            });
+
+        nodes.append('circle')
+            .attr('r', 5);
+
+        nodes.append('text')
+            .attr('dy', '0.31em')
+            .attr('x', d => d.children ? -8 : 8)
+            .attr('text-anchor', d => d.children ? 'end' : 'start')
+            .text(d => d.data.data['Room Name']); // Use 'Room Name' as the text
+
+        // Helper function to get parent ID
+        function getParentId(d) {
+            return d['Floor'] + '_' + d['Building'] + '_' + d['Campus'] + '_' + d['City'] + '_' + d['State'] + '_' + d['Country'] + '_' + d['Company'];
+        }
+
+        // Helper function to update the chart
+        function update(updatedData) {
+            const updatedNodes = svg.selectAll('.node')
+                .data(updatedData.descendants(), d => d.id);
+
+            updatedNodes.select('circle')
+                .attr('r', 5);
+
+            updatedNodes.select('text')
+                .text(d => d.data.data['Room Name']);
+
+            const updatedLinks = svg.selectAll('.link')
+                .data(updatedData.links());
+
+            updatedLinks.enter()
+                .append('path')
+                .attr('class', 'link')
+                .attr('d', d3.linkHorizontal()
+                    .x(d => d.y)
+                    .y(d => d.x));
+
+            updatedLinks.exit().remove();
+        }
+    });
+</script>
+    <script type="text/javascript" src="code.js"></script>
+</body>
+</html>
